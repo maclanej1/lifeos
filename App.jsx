@@ -42,22 +42,20 @@ const TICKTICK_API = 'https://api.ticktick.com/open/v1';
 
 const ticktickApi = {
   async getTasks(token) {
-    console.log('Fetching tasks with token:', token ? 'present' : 'missing');
+    console.log('getTasks: token length =', token ? token.length : 0);
     const response = await fetch(`${TICKTICK_API}/tasks`, {
       headers: { 
         Authorization: `Bearer ${token}`,
         'Content-Type': 'application/json'
       }
     });
-    console.log('Response status:', response.status);
+    console.log('getTasks: status =', response.status);
     if (!response.ok) {
       const text = await response.text();
-      console.error('API Error:', text);
-      throw new Error(`API Error ${response.status}: ${text}`);
+      console.error('getTasks: error =', text);
+      throw new Error(`Sync failed: ${response.status}`);
     }
-    const data = response.json();
-    console.log('Tasks data:', data);
-    return data;
+    return response.json();
   },
 
   async createTask(token, task) {
@@ -723,9 +721,9 @@ export default function App() {
             setUserData({ ...users[currentUser] });
             Alert.alert('Sync Complete', `Synced ${syncedTasks.length} tasks from TickTick`);
           } catch (error) {
-            console.error('Sync error:', error);
-            Alert.alert('Sync Failed', error.message || 'Could not sync tasks');
-          }
+          console.error('Sync error:', error);
+          Alert.alert('Sync Failed', error.message || 'Could not sync tasks. Check Console for details.');
+        }
         }, 500);
       }
     }
