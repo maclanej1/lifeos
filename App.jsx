@@ -583,46 +583,12 @@ const SettingsContent = ({ user, onLogout, ticktickToken, setTicktickToken, refr
     setApiKeys({ ticktickClientId, ticktickClientSecret });
     setLoading(true);
     
-    const basePath = window.location.pathname.replace(/\/[^/]*$/, '');
-    const redirectUri = window.location.origin + basePath + '/callback';
+    const redirectUri = window.location.origin + '/lifeos/callback.html';
     const authUrl = `https://ticktick.com/oauth/authorize?client_id=${ticktickClientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=token&scope=tasks:read%20tasks:write`;
     
-    const authWindow = window.open(authUrl, 'TickTick Auth', 'width=500,height=600');
-    
-    const checkClosed = setInterval(() => {
-      if (authWindow.closed) {
-        clearInterval(checkClosed);
-        const hash = window.location.hash;
-        if (hash) {
-          const params = new URLSearchParams(hash.substring(1));
-          const token = params.get('access_token');
-          if (token) {
-            setTicktickToken(token);
-            Alert.alert('Success', 'TickTick connected! Syncing tasks...');
-            setTimeout(async () => {
-              try {
-                const users = getUsers();
-                const currentUser = localStorage.getItem(CURRENT_USER_KEY);
-                if (users[currentUser]) {
-                  const syncedTasks = await syncTasksWithTickTick(users[currentUser].tasks || [], token, () => {});
-                  users[currentUser].tasks = syncedTasks;
-                  saveUsers(users);
-                  refreshData();
-                  Alert.alert('Sync Complete', `Synced ${syncedTasks.length} tasks from TickTick`);
-                }
-              } catch (error) {
-                console.error('Sync error:', error);
-                Alert.alert('Sync Failed', error.message || 'Could not sync tasks');
-              }
-            }, 500);
-          } else {
-            Alert.alert('Error', 'No access token received');
-          }
-        }
-        window.location.hash = '';
-        setLoading(false);
-      }
-    }, 500);
+    window.open(authUrl, 'TickTick Auth', 'width=500,height=600');
+    Alert.alert('Waiting', 'Complete authorization in the popup, then return here.');
+    setLoading(false);
   };
 
   const disconnectTickTick = () => {
@@ -713,6 +679,32 @@ export default function App() {
       }
     }
   }, [currentUser]);
+
+  useEffect(() => {
+    const oauthToken = localStorage.getItem('ticktick_oauth_token');
+    if (oauthToken && currentUser && userData && !userData.ticktickToken) {
+      localStorage.removeItem('ticktick_oauth_token');
+      const users = getUsers();
+      if (users[currentUser]) {
+        users[currentUser].ticktickToken = oauthToken;
+        saveUsers(users);
+        setUserData({ ...users[currentUser] });
+        setActiveTab('Tasks');
+        setTimeout(async () => {
+          try {
+            const syncedTasks = await syncTasksWithTickTick(users[currentUser].tasks || [], oauthToken, () => {});
+            users[currentUser].tasks = syncedTasks;
+            saveUsers(users);
+            setUserData({ ...users[currentUser] });
+            Alert.alert('Sync Complete', `Synced ${syncedTasks.length} tasks from TickTick`);
+          } catch (error) {
+            console.error('Sync error:', error);
+            Alert.alert('Sync Failed', error.message || 'Could not sync tasks');
+          }
+        }, 1000);
+      }
+    }
+  }, [currentUser, userData]);
 
   const refreshData = () => {
     const users = getUsers();
