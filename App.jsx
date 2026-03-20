@@ -685,26 +685,23 @@ export default function App() {
   }, [currentUser]);
 
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const syncStatus = params.get('sync');
+    const urlParams = new URLSearchParams(window.location.search);
+    const syncStatus = urlParams.get('sync');
     const oauthToken = localStorage.getItem('ticktick_oauth_token');
     
-    console.log('useEffect: syncStatus=', syncStatus, 'oauthToken=', oauthToken ? 'present' : 'none', 'currentUser=', currentUser);
+    console.log('useEffect triggered: syncStatus=', syncStatus, 'oauthToken=', oauthToken ? 'present' : 'none');
     
     if (syncStatus) {
+      console.log('Clearing sync status from URL');
       window.history.replaceState({}, '', '/lifeos/');
       if (syncStatus === 'error') {
         Alert.alert('OAuth Error', 'Failed to connect to TickTick');
+        return;
       }
     }
     
-    if (!currentUser || !userData) {
-      console.log('useEffect: missing user data');
-      return;
-    }
-    
-    if (oauthToken) {
-      console.log('useEffect: processing oauth token');
+    if (oauthToken && currentUser && userData) {
+      console.log('Processing OAuth token');
       const users = getUsers();
       if (users[currentUser]) {
         users[currentUser].ticktickToken = oauthToken;
@@ -721,13 +718,13 @@ export default function App() {
             setUserData({ ...users[currentUser] });
             Alert.alert('Sync Complete', `Synced ${syncedTasks.length} tasks from TickTick`);
           } catch (error) {
-          console.error('Sync error:', error);
-          Alert.alert('Sync Failed', error.message || 'Could not sync tasks. Check Console for details.');
-        }
+            console.error('Sync error:', error);
+            Alert.alert('Sync Failed', error.message || 'Could not sync tasks');
+          }
         }, 500);
       }
     }
-  }, [currentUser, userData, setUserData]);
+  }, [currentUser, userData, setUserData, window.location.search]);
 
   const refreshData = () => {
     const users = getUsers();
