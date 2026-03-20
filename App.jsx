@@ -42,9 +42,12 @@ const TICKTICK_API = 'https://api.ticktick.com/open/v1';
 
 const ticktickApi = {
   async getTasks(token) {
-    console.log('Fetching tasks with token:', token ? 'token present' : 'no token');
+    console.log('Fetching tasks with token:', token ? 'present' : 'missing');
     const response = await fetch(`${TICKTICK_API}/tasks`, {
-      headers: { Authorization: `Bearer ${token}` }
+      headers: { 
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
     });
     console.log('Response status:', response.status);
     if (!response.ok) {
@@ -52,7 +55,9 @@ const ticktickApi = {
       console.error('API Error:', text);
       throw new Error(`API Error ${response.status}: ${text}`);
     }
-    return response.json();
+    const data = response.json();
+    console.log('Tasks data:', data);
+    return data;
   },
 
   async createTask(token, task) {
