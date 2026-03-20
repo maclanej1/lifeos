@@ -5,10 +5,10 @@
     <title>LifeOS - Connecting...</title>
   </head>
   <body>
-    <p>Connecting to LifeOS...</p>
+    <p>Connecting...</p>
     <script>
-      console.log('Callback page loaded');
-      console.log('Full URL:', window.location.href);
+      console.log('Callback loaded');
+      console.log('URL:', window.location.href);
       console.log('Hash:', window.location.hash);
       
       const hash = window.location.hash;
@@ -16,19 +16,21 @@
       if (hash && hash.includes('access_token=')) {
         const params = new URLSearchParams(hash.substring(1));
         const token = params.get('access_token');
-        console.log('Token found:', token ? 'yes (length: ' + token.length + ')' : 'no');
+        const error = params.get('error');
         
         if (token) {
+          console.log('Token received, saving to localStorage');
           localStorage.setItem('ticktick_oauth_token', token);
           window.location.href = '/lifeos/?sync=success';
+        } else if (error) {
+          console.log('OAuth error:', error);
+          window.location.href = '/lifeos/?sync=error';
         } else {
+          console.log('No token found');
           window.location.href = '/lifeos/?sync=error';
         }
-      } else if (hash && hash.includes('error=')) {
-        console.log('OAuth error in hash');
-        window.location.href = '/lifeos/?sync=error';
       } else {
-        console.log('No token or error in hash');
+        console.log('No access_token in hash');
         window.location.href = '/lifeos/?sync=error';
       }
     </script>
