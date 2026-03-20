@@ -577,9 +577,9 @@ const SettingsContent = ({ user, onLogout, ticktickToken, setTicktickToken, refr
   const [credentialsSaved, setCredentialsSaved] = useState(false);
 
   useEffect(() => {
-    if (apiKeys.ticktickClientId !== ticktickClientId || apiKeys.ticktickClientSecret !== ticktickClientSecret) {
+    if ((apiKeys.ticktickClientId !== ticktickClientId || apiKeys.ticktickClientSecret !== ticktickClientSecret) && (ticktickClientId || ticktickClientSecret)) {
       const timer = setTimeout(() => {
-        setApiKeys((prevKeys) => ({ ...prevKeys, ticktickClientId, ticktickClientSecret }));
+        setApiKeys({ ticktickClientId, ticktickClientSecret });
         setCredentialsSaved(true);
         setTimeout(() => setCredentialsSaved(false), 2000);
       }, 500);
@@ -608,7 +608,7 @@ const SettingsContent = ({ user, onLogout, ticktickToken, setTicktickToken, refr
           const token = params.get('access_token');
           if (token) {
             setTicktickToken(token);
-            setApiKeys({ ...apiKeys, ticktickClientId, ticktickClientSecret });
+            setApiKeys({ ticktickClientId, ticktickClientSecret });
             Alert.alert('Success', 'TickTick connected! Syncing tasks...');
             setTimeout(async () => {
               try {
