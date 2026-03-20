@@ -574,24 +574,13 @@ const SettingsContent = ({ user, onLogout, ticktickToken, setTicktickToken, refr
   const [ticktickClientId, setTicktickClientId] = useState(apiKeys.ticktickClientId || '');
   const [ticktickClientSecret, setTicktickClientSecret] = useState(apiKeys.ticktickClientSecret || '');
   const [loading, setLoading] = useState(false);
-  const [credentialsSaved, setCredentialsSaved] = useState(false);
-
-  useEffect(() => {
-    if ((apiKeys.ticktickClientId !== ticktickClientId || apiKeys.ticktickClientSecret !== ticktickClientSecret) && (ticktickClientId || ticktickClientSecret)) {
-      const timer = setTimeout(() => {
-        setApiKeys({ ticktickClientId, ticktickClientSecret });
-        setCredentialsSaved(true);
-        setTimeout(() => setCredentialsSaved(false), 2000);
-      }, 500);
-      return () => clearTimeout(timer);
-    }
-  }, [ticktickClientId, ticktickClientSecret, apiKeys, setApiKeys]);
 
   const connectTickTick = async () => {
     if (!ticktickClientId) {
       Alert.alert('Error', 'Please enter your TickTick Client ID');
       return;
     }
+    setApiKeys({ ticktickClientId, ticktickClientSecret });
     setLoading(true);
     
     const redirectUri = window.location.origin + '/callback';
@@ -608,7 +597,6 @@ const SettingsContent = ({ user, onLogout, ticktickToken, setTicktickToken, refr
           const token = params.get('access_token');
           if (token) {
             setTicktickToken(token);
-            setApiKeys({ ticktickClientId, ticktickClientSecret });
             Alert.alert('Success', 'TickTick connected! Syncing tasks...');
             setTimeout(async () => {
               try {
@@ -685,7 +673,6 @@ const SettingsContent = ({ user, onLogout, ticktickToken, setTicktickToken, refr
               onChangeText={setTicktickClientSecret}
               secureTextEntry
             />
-            {credentialsSaved && <Text style={settingsStyles.savedText}>Saved</Text>}
             <TouchableOpacity style={styles.saveBtn} onPress={connectTickTick} disabled={loading}>
               <Text style={styles.saveBtnText}>{loading ? 'Connecting...' : 'Connect TickTick'}</Text>
             </TouchableOpacity>
