@@ -12,8 +12,12 @@ module.exports = defineConfig({
   base: '/lifeos/',
   build: {
     outDir: 'docs',
+    assetsDir: 'assets',
     rollupOptions: {
-      input: path.resolve(__dirname, 'index.html')
+      input: {
+        main: path.resolve(__dirname, 'index.html'),
+        callback: path.resolve(__dirname, 'callback.html')
+      }
     }
   },
   server: {

@@ -583,8 +583,8 @@ const SettingsContent = ({ user, onLogout, ticktickToken, setTicktickToken, refr
     setApiKeys({ ticktickClientId, ticktickClientSecret });
     setLoading(true);
     
-    const redirectUri = window.location.origin + '/lifeos/callback.html';
-    const authUrl = `https://ticktick.com/oauth/authorize?client_id=${ticktickClientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=token&scope=tasks:read%20tasks:write`;
+    const redirectUri = encodeURIComponent(window.location.origin + '/lifeos/?oauth=callback');
+    const authUrl = `https://ticktick.com/oauth/authorize?client_id=${ticktickClientId}&redirect_uri=${redirectUri}&response_type=token&scope=tasks:read%20tasks:write`;
     
     window.open(authUrl, 'TickTick Auth', 'width=500,height=600');
     Alert.alert('Waiting', 'Complete authorization in the popup, then return here.');
@@ -681,6 +681,7 @@ export default function App() {
   }, [currentUser]);
 
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
     const oauthToken = localStorage.getItem('ticktick_oauth_token');
     if (oauthToken && currentUser && userData && !userData.ticktickToken) {
       localStorage.removeItem('ticktick_oauth_token');
@@ -703,6 +704,9 @@ export default function App() {
           }
         }, 1000);
       }
+    }
+    if (params.get('oauth') === 'callback' || params.get('oauth') === 'success') {
+      window.history.replaceState({}, '', '/lifeos/');
     }
   }, [currentUser, userData]);
 
