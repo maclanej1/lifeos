@@ -12,12 +12,12 @@
         const token = params.get('access_token');
         if (token) {
           localStorage.setItem('ticktick_oauth_token', token);
-          window.location.href = '/lifeos/?oauth=success';
+          window.location.href = '/lifeos/?sync=success';
         } else {
-          window.location.href = '/lifeos/?oauth=error';
+          window.location.href = '/lifeos/?sync=error';
         }
       } else {
-        window.location.href = '/lifeos/?oauth=error';
+        window.location.href = '/lifeos/?sync=error';
       }
     </script>
   </body>
