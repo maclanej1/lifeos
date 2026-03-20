@@ -9,7 +9,7 @@ module.exports = defineConfig({
       'react-native': 'react-native-web'
     }
   },
-  base: './',
+  base: '/lifeos/',
   build: {
     outDir: 'docs',
     rollupOptions: {
