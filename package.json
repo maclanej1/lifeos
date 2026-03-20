@@ -1,0 +1,94 @@
+{
+  "name": "lifeos",
+  "version": "1.0.0",
+  "description": "LifeOS - Personal Notion Clone",
+  "main": "electron/main.js",
+  "scripts": {
+    "start": "expo start",
+    "android": "expo run:android",
+    "ios": "expo run:ios",
+    "web": "vite",
+    "dev": "vite",
+    "build": "vite build",
+    "prebuild": "expo prebuild",
+    "electron": "electron .",
+    "electron:dev": "NODE_ENV=development electron .",
+    "electron:build": "npm run build && electron-builder",
+    "electron:build:win": "npm run build && electron-builder --win",
+    "electron:build:mac": "npm run build && electron-builder --mac",
+    "electron:build:linux": "npm run build && electron-builder --linux",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit"
+  },
+  "keywords": [
+    "notion",
+    "productivity",
+    "notes",
+    "tasks",
+    "calendar"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@op-engineering/op-sqlite": "^15.2.7",
+    "@react-navigation/bottom-tabs": "^7.15.5",
+    "@react-navigation/native": "^7.1.33",
+    "@react-navigation/native-stack": "^7.14.5",
+    "@vitejs/plugin-react": "^6.0.1",
+    "date-fns": "^4.1.0",
+    "expo": "^55.0.6",
+    "expo-constants": "^55.0.7",
+    "expo-crypto": "^55.0.9",
+    "expo-file-system": "^55.0.10",
+    "expo-linking": "^55.0.7",
+    "expo-secure-store": "^55.0.8",
+    "expo-sqlite": "^55.0.10",
+    "expo-status-bar": "^55.0.4",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-native": "^0.83.2",
+    "react-native-calendar-events": "^2.2.0",
+    "react-native-calendars": "^1.1314.0",
+    "react-native-draggable-flatlist": "^4.0.3",
+    "react-native-gesture-handler": "^2.30.0",
+    "react-native-reanimated": "^4.2.1",
+    "react-native-safe-area-context": "^5.6.2",
+    "react-native-screens": "^4.23.0",
+    "react-native-web": "^0.19.0",
+    "react-native-worklets": "^0.7.2",
+    "uuid": "^13.0.0",
+    "vite": "^8.0.1",
+    "zustand": "^5.0.11"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.29.0",
+    "@types/react": "^19.2.14",
+    "@types/uuid": "^10.0.0",
+    "electron": "^41.0.3",
+    "electron-builder": "^26.8.1",
+    "typescript": "^5.9.3"
+  },
+  "build": {
+    "appId": "com.lifeos.app",
+    "productName": "LifeOS",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "docs/**/*",
+      "electron/**/*"
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "assets/icon.png"
+    },
+    "mac": {
+      "target": "dmg",
+      "icon": "assets/icon.png"
+    },
+    "linux": {
+      "target": "AppImage",
+      "icon": "assets/icon.png"
+    }
+  }
+}
