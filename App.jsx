@@ -583,7 +583,8 @@ const SettingsContent = ({ user, onLogout, ticktickToken, setTicktickToken, refr
     setApiKeys({ ticktickClientId, ticktickClientSecret });
     setLoading(true);
     
-    const redirectUri = window.location.origin + '/callback';
+    const basePath = window.location.pathname.replace(/\/[^/]*$/, '');
+    const redirectUri = window.location.origin + basePath + '/callback';
     const authUrl = `https://ticktick.com/oauth/authorize?client_id=${ticktickClientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=token&scope=tasks:read%20tasks:write`;
     
     const authWindow = window.open(authUrl, 'TickTick Auth', 'width=500,height=600');
