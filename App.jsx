@@ -686,41 +686,45 @@ export default function App() {
     const syncStatus = params.get('sync');
     const oauthToken = localStorage.getItem('ticktick_oauth_token');
     
+    console.log('useEffect: syncStatus=', syncStatus, 'oauthToken=', oauthToken ? 'present' : 'none', 'currentUser=', currentUser);
+    
     if (syncStatus) {
       window.history.replaceState({}, '', '/lifeos/');
+      if (syncStatus === 'error') {
+        Alert.alert('OAuth Error', 'Failed to connect to TickTick');
+      }
     }
     
-    if ((oauthToken || userData?.ticktickToken) && currentUser && userData) {
-      const token = oauthToken || userData.ticktickToken;
-      
-      if (oauthToken) {
+    if (!currentUser || !userData) {
+      console.log('useEffect: missing user data');
+      return;
+    }
+    
+    if (oauthToken) {
+      console.log('useEffect: processing oauth token');
+      const users = getUsers();
+      if (users[currentUser]) {
+        users[currentUser].ticktickToken = oauthToken;
+        saveUsers(users);
+        setUserData({ ...users[currentUser] });
         localStorage.removeItem('ticktick_oauth_token');
-        const users = getUsers();
-        if (users[currentUser]) {
-          users[currentUser].ticktickToken = token;
-          saveUsers(users);
-          setUserData({ ...users[currentUser] });
-        }
-      }
-      
-      setActiveTab('Tasks');
-      setTimeout(async () => {
-        try {
-          const users = getUsers();
-          if (users[currentUser]) {
-            const syncedTasks = await syncTasksWithTickTick(users[currentUser].tasks || [], token, () => {});
+        
+        setActiveTab('Tasks');
+        setTimeout(async () => {
+          try {
+            const syncedTasks = await syncTasksWithTickTick(users[currentUser].tasks || [], oauthToken, () => {});
             users[currentUser].tasks = syncedTasks;
             saveUsers(users);
             setUserData({ ...users[currentUser] });
             Alert.alert('Sync Complete', `Synced ${syncedTasks.length} tasks from TickTick`);
+          } catch (error) {
+            console.error('Sync error:', error);
+            Alert.alert('Sync Failed', error.message || 'Could not sync tasks');
           }
-        } catch (error) {
-          console.error('Sync error:', error);
-          Alert.alert('Sync Failed', error.message || 'Could not sync tasks');
-        }
-      }, 500);
+        }, 500);
+      }
     }
-  }, [currentUser, userData]);
+  }, [currentUser, userData, setUserData]);
 
   const refreshData = () => {
     const users = getUsers();
