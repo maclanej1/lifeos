@@ -38,132 +38,6 @@ const hashPassword = (password) => {
   return hash.toString(16);
 };
 
-const TICKTICK_API = 'https://api.ticktick.com/open/v1';
-
-const ticktickApi = {
-  async getTasks(token) {
-    console.log('getTasks: token length =', token ? token.length : 0);
-    const response = await fetch(`${TICKTICK_API}/tasks`, {
-      headers: { 
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      }
-    });
-    console.log('getTasks: status =', response.status);
-    if (!response.ok) {
-      const text = await response.text();
-      console.error('getTasks: error =', text);
-      throw new Error(`Sync failed: ${response.status}`);
-    }
-    return response.json();
-  },
-
-  async createTask(token, task) {
-    const response = await fetch(`${TICKTICK_API}/tasks`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(task)
-    });
-    if (!response.ok) throw new Error('Failed to create task');
-    return response.json();
-  },
-
-  async updateTask(token, taskId, task) {
-    const response = await fetch(`${TICKTICK_API}/tasks/${taskId}`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(task)
-    });
-    if (!response.ok) throw new Error('Failed to update task');
-    return response.json();
-  },
-
-  async deleteTask(token, taskId) {
-    const response = await fetch(`${TICKTICK_API}/tasks/${taskId}`, {
-      method: 'DELETE',
-      headers: { Authorization: `Bearer ${token}` }
-    });
-    if (!response.ok) throw new Error('Failed to delete task');
-  }
-};
-
-const syncTasksWithTickTick = async (localTasks, token, setSyncStatus) => {
-  setSyncStatus('syncing');
-  try {
-    console.log('Starting sync with token:', token ? 'present' : 'missing');
-    const remoteTasks = await ticktickApi.getTasks(token);
-    console.log('Remote tasks:', remoteTasks);
-    const mergedTasks = [...localTasks];
-    
-    remoteTasks.forEach(remoteTask => {
-      const localIndex = mergedTasks.findIndex(t => t.ticktickId === remoteTask.id);
-      if (localIndex === -1) {
-        mergedTasks.push({
-          id: Date.now().toString() + Math.random(),
-          title: remoteTask.title,
-          description: remoteTask.content || '',
-          dueDate: remoteTask.dueDate ? new Date(remoteTask.dueDate).toISOString().split('T')[0] : null,
-          priority: remoteTask.priority === 1 ? 'high' : remoteTask.priority === 3 ? 'low' : 'medium',
-          status: remoteTask.status === 2 ? 'done' : 'pending',
-          ticktickId: remoteTask.id,
-          createdAt: new Date().toISOString()
-        });
-      } else {
-        const local = mergedTasks[localIndex];
-        const remoteUpdated = new Date(remoteTask.modifiedTime).getTime();
-        const localUpdated = new Date(local.updatedAt || 0).getTime();
-        if (remoteUpdated > localUpdated) {
-          mergedTasks[localIndex] = {
-            ...local,
-            title: remoteTask.title,
-            description: remoteTask.content || '',
-            status: remoteTask.status === 2 ? 'done' : 'pending'
-          };
-        }
-      }
-    });
-
-    for (const task of localTasks) {
-      if (!task.ticktickId) {
-        const newRemote = await ticktickApi.createTask(token, {
-          title: task.title,
-          content: task.description || '',
-          dueDate: task.dueDate ? new Date(task.dueDate).toISOString() : null,
-          priority: task.priority === 'high' ? 1 : task.priority === 'low' ? 3 : 0,
-          status: task.status === 'done' ? 2 : 0
-        });
-        const localIndex = mergedTasks.findIndex(t => t.id === task.id);
-        if (localIndex !== -1) {
-          mergedTasks[localIndex].ticktickId = newRemote.id;
-        }
-      } else if (task._updated) {
-        const remoteTask = remoteTasks.find(r => r.id === task.ticktickId);
-        if (remoteTask) {
-          await ticktickApi.updateTask(token, task.ticktickId, {
-            ...remoteTask,
-            title: task.title,
-            content: task.description || '',
-            status: task.status === 'done' ? 2 : 0
-          });
-        }
-      }
-    }
-
-    setSyncStatus('synced');
-    return mergedTasks;
-  } catch (error) {
-    console.error('Sync error:', error);
-    setSyncStatus('error');
-    return localTasks;
-  }
-};
-
 const LoginScreen = ({ onLogin }) => {
   const [isSignup, setIsSignup] = useState(false);
   const [username, setUsername] = useState('');
@@ -377,14 +251,13 @@ const PagesContent = ({ userData }) => {
   );
 };
 
-const TasksContent = ({ userData, refreshData, ticktickToken }) => {
+const TasksContent = ({ userData, refreshData }) => {
   const [showAddModal, setShowAddModal] = useState(false);
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [newTaskDescription, setNewTaskDescription] = useState('');
   const [newTaskDueDate, setNewTaskDueDate] = useState('');
   const [newTaskPriority, setNewTaskPriority] = useState('medium');
   const [filter, setFilter] = useState('all');
-  const [syncStatus, setSyncStatus] = useState('idle');
 
   const tasks = userData.tasks || [];
 
@@ -433,25 +306,6 @@ const TasksContent = ({ userData, refreshData, ticktickToken }) => {
     ]);
   };
 
-  const handleSync = async () => {
-    if (!ticktickToken) {
-      Alert.alert('Not Connected', 'Please connect TickTick in Settings first.');
-      return;
-    }
-    const syncedTasks = await syncTasksWithTickTick(tasks, ticktickToken, setSyncStatus);
-    saveTasks(syncedTasks);
-    setTimeout(() => setSyncStatus('idle'), 3000);
-  };
-
-  const getSyncStatusDisplay = () => {
-    if (syncStatus === 'syncing') return { icon: '↻', text: 'Syncing...' };
-    if (syncStatus === 'synced') return { icon: '✓', text: 'Synced' };
-    if (syncStatus === 'error') return { icon: '✗', text: 'Sync Failed' };
-    return null;
-  };
-
-  const syncDisplay = getSyncStatusDisplay();
-
   const filteredTasks = tasks.filter(t => {
     if (filter === 'all') return true;
     if (filter === 'pending') return t.status === 'pending';
@@ -469,16 +323,9 @@ const TasksContent = ({ userData, refreshData, ticktickToken }) => {
     <View style={tasksStyles.container}>
       <View style={tasksStyles.header}>
         <Text style={tasksStyles.title}>Tasks</Text>
-        <View style={tasksStyles.headerActions}>
-          {ticktickToken && (
-            <TouchableOpacity style={[styles.smallButton, syncStatus === 'syncing' && styles.smallButtonDisabled]} onPress={handleSync} disabled={syncStatus === 'syncing'}>
-              <Text style={styles.smallButtonText}>{syncDisplay ? `${syncDisplay.icon} ${syncDisplay.text}` : '↻ Sync'}</Text>
-            </TouchableOpacity>
-          )}
-          <TouchableOpacity style={styles.smallButton} onPress={() => setShowAddModal(true)}>
-            <Text style={styles.smallButtonText}>+ Add</Text>
-          </TouchableOpacity>
-        </View>
+        <TouchableOpacity style={styles.smallButton} onPress={() => setShowAddModal(true)}>
+          <Text style={styles.smallButtonText}>+ Add</Text>
+        </TouchableOpacity>
       </View>
       <View style={tasksStyles.filters}>
         {['all', 'pending', 'done'].map(f => (
@@ -575,33 +422,7 @@ const AIContent = () => (
   <View style={styles.center}><Text style={styles.placeholder}>AI Assistant - Coming Soon</Text></View>
 );
 
-const SettingsContent = ({ user, onLogout, ticktickToken, setTicktickToken, refreshData, apiKeys, setApiKeys }) => {
-  const [ticktickClientId, setTicktickClientId] = useState(apiKeys.ticktickClientId || '');
-  const [ticktickClientSecret, setTicktickClientSecret] = useState(apiKeys.ticktickClientSecret || '');
-  const [loading, setLoading] = useState(false);
-
-  const connectTickTick = async () => {
-    if (!ticktickClientId) {
-      Alert.alert('Error', 'Please enter your TickTick Client ID');
-      return;
-    }
-    setApiKeys({ ticktickClientId, ticktickClientSecret });
-    setLoading(true);
-    
-    const redirectUri = window.location.origin + '/lifeos/callback';
-    const state = Date.now().toString();
-    const authUrl = `https://ticktick.com/oauth/authorize?client_id=${ticktickClientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=token&scope=tasks:read%20tasks:write&state=${state}`;
-    
-    console.log('Opening OAuth URL:', authUrl);
-    window.location.href = authUrl;
-    setLoading(false);
-  };
-
-  const disconnectTickTick = () => {
-    setTicktickToken(null);
-    Alert.alert('Disconnected', 'TickTick has been disconnected');
-  };
-
+const SettingsContent = ({ user, onLogout }) => {
   return (
   <ScrollView style={settingsStyles.container}>
     <View style={settingsStyles.header}>
@@ -620,41 +441,12 @@ const SettingsContent = ({ user, onLogout, ticktickToken, setTicktickToken, refr
     <View style={settingsStyles.section}>
       <Text style={settingsStyles.sectionTitle}>Integrations</Text>
       <View style={settingsStyles.card}>
-        <Text style={settingsStyles.cardTitle}>TickTick</Text>
-        {ticktickToken ? (
-          <View style={settingsStyles.connected}>
-            <Text style={settingsStyles.connectedText}>Connected</Text>
-            <TouchableOpacity onPress={disconnectTickTick}>
-              <Text style={styles.linkText}>Disconnect</Text>
-            </TouchableOpacity>
-          </View>
-        ) : (
-          <>
-            <Text style={settingsStyles.cardDesc}>Enter your TickTick Client ID to connect</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Client ID"
-              placeholderTextColor={Colors.text.muted}
-              value={ticktickClientId}
-              onChangeText={setTicktickClientId}
-            />
-            <TextInput
-              style={styles.input}
-              placeholder="Client Secret"
-              placeholderTextColor={Colors.text.muted}
-              value={ticktickClientSecret}
-              onChangeText={setTicktickClientSecret}
-              secureTextEntry
-            />
-            <TouchableOpacity style={styles.saveBtn} onPress={connectTickTick} disabled={loading}>
-              <Text style={styles.saveBtnText}>{loading ? 'Connecting...' : 'Connect TickTick'}</Text>
-            </TouchableOpacity>
-          </>
-        )}
-      </View>
-      <View style={settingsStyles.card}>
         <Text style={settingsStyles.cardTitle}>Calendar Integrations</Text>
         <Text style={settingsStyles.cardDesc}>Coming soon: Google Calendar, Apple Calendar, Outlook</Text>
+      </View>
+      <View style={settingsStyles.card}>
+        <Text style={settingsStyles.cardTitle}>Task Integrations</Text>
+        <Text style={settingsStyles.cardDesc}>Coming soon: Todoist, Asana, Notion</Text>
       </View>
       <View style={settingsStyles.card}>
         <Text style={settingsStyles.cardTitle}>AI Providers</Text>
@@ -686,48 +478,6 @@ export default function App() {
     }
   }, [currentUser]);
 
-  useEffect(() => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const syncStatus = urlParams.get('sync');
-    const oauthToken = localStorage.getItem('ticktick_oauth_token');
-    
-    console.log('useEffect triggered: syncStatus=', syncStatus, 'oauthToken=', oauthToken ? 'present' : 'none');
-    
-    if (syncStatus) {
-      console.log('Clearing sync status from URL');
-      window.history.replaceState({}, '', '/lifeos/');
-      if (syncStatus === 'error') {
-        Alert.alert('OAuth Error', 'Failed to connect to TickTick');
-        return;
-      }
-    }
-    
-    if (oauthToken && currentUser && userData) {
-      console.log('Processing OAuth token');
-      const users = getUsers();
-      if (users[currentUser]) {
-        users[currentUser].ticktickToken = oauthToken;
-        saveUsers(users);
-        setUserData({ ...users[currentUser] });
-        localStorage.removeItem('ticktick_oauth_token');
-        
-        setActiveTab('Tasks');
-        setTimeout(async () => {
-          try {
-            const syncedTasks = await syncTasksWithTickTick(users[currentUser].tasks || [], oauthToken, () => {});
-            users[currentUser].tasks = syncedTasks;
-            saveUsers(users);
-            setUserData({ ...users[currentUser] });
-            Alert.alert('Sync Complete', `Synced ${syncedTasks.length} tasks from TickTick`);
-          } catch (error) {
-            console.error('Sync error:', error);
-            Alert.alert('Sync Failed', error.message || 'Could not sync tasks');
-          }
-        }, 500);
-      }
-    }
-  }, [currentUser, userData, setUserData, window.location.search]);
-
   const refreshData = () => {
     const users = getUsers();
     if (currentUser && users[currentUser]) {
@@ -755,24 +505,10 @@ export default function App() {
     switch (activeTab) {
       case 'Home': return <HomeContent user={currentUser} />;
       case 'Pages': return <PagesContent userData={userData} />;
-      case 'Tasks': return <TasksContent userData={userData} refreshData={refreshData} ticktickToken={userData.ticktickToken} />;
+      case 'Tasks': return <TasksContent userData={userData} refreshData={refreshData} />;
       case 'Calendar': return <CalendarContent />;
       case 'AI': return <AIContent />;
-      case 'Settings': return <SettingsContent user={currentUser} onLogout={handleLogout} ticktickToken={userData.ticktickToken} refreshData={refreshData} setTicktickToken={(token) => {
-        const users = getUsers();
-        if (users[currentUser]) {
-          users[currentUser].ticktickToken = token;
-          saveUsers(users);
-          setUserData({ ...users[currentUser] });
-        }
-      }} apiKeys={userData.apiKeys || {}} setApiKeys={(keys) => {
-        const users = getUsers();
-        if (users[currentUser]) {
-          users[currentUser].apiKeys = keys;
-          saveUsers(users);
-          setUserData({ ...users[currentUser] });
-        }
-      }} />;
+      case 'Settings': return <SettingsContent user={currentUser} onLogout={handleLogout} />;
       default: return <HomeContent user={currentUser} />;
     }
   };
@@ -888,7 +624,6 @@ const styles = StyleSheet.create({
 const tasksStyles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background.primary },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: Spacing.lg, paddingTop: 60 },
-  headerActions: { flexDirection: 'row' },
   filters: { flexDirection: 'row', paddingHorizontal: Spacing.lg, marginBottom: Spacing.md },
   filterBtn: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: BorderRadius.full, marginRight: 8, backgroundColor: Colors.background.secondary },
   filterBtnActive: { backgroundColor: Colors.accent.primary },
