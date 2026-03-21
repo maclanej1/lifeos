@@ -589,7 +589,8 @@ const SettingsContent = ({ user, onLogout, ticktickToken, setTicktickToken, refr
     setLoading(true);
     
     const redirectUri = window.location.origin + '/lifeos/callback';
-    const authUrl = `https://ticktick.com/oauth/authorize?client_id=${ticktickClientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=token&scope=tasks:read%20tasks:write`;
+    const state = Date.now().toString();
+    const authUrl = `https://ticktick.com/oauth/authorize?client_id=${ticktickClientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=token&scope=tasks:read%20tasks:write&state=${state}`;
     
     console.log('Opening OAuth URL:', authUrl);
     window.location.href = authUrl;
